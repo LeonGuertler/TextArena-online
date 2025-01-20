@@ -1,68 +1,70 @@
-import textarena as ta 
-from database import get_db 
-from models import Environment
-import sys
+import textarena as ta
+from database import get_db
+from sqlalchemy.orm import Session
+import secrets, time
+from core.models import Model, Base, Environment, Matchmaking, PlayerGame, Game, Elo, PlayerLog
+
+from config import STANDARD_MODELS, DEFAULT_ELO, HUMANITY_MODEL_NAME
 
 def register_env(env_id: str, num_players: int):
-    """
-    Register a new environment with a unique ID and the required number of players.
-
-    Args:
-        env_id (str): Unique identifier for the environment.
-        num_players (int): Number of players required for the environment.
-    """
-    # Initialize database session using the context manager approach
     db = next(get_db())
     try:
-        # Check if environment_id is unique
-        existing_environment = db.query(Environment).filter(Environment.environment_id == env_id).first()
-        if existing_environment:
-            print(f"Environment ID '{env_id}' already exists.")
+        existing = db.query(Environment).filter(Environment.environment_id == env_id).first()
+        if existing:
             return
-
-        # Create and add new Environment instance
-        new_environment = Environment(
-            environment_id=env_id,
-            num_players=num_players
-        )
-        db.add(new_environment)
+        new_env = Environment(environment_id=env_id, num_players=num_players)
+        db.add(new_env)
         db.commit()
-        db.refresh(new_environment)
-
-        # Confirm successful registration
-        print(f"Environment registered successfully: {new_environment.environment_id}")
-
-    except Exception as e:
-        print(f"Error registering environment '{env_id}': {e}")
     finally:
-        # Close the session to free up resources
         db.close()
 
-
 def register_envs():
-    register_env(
-        env_id="DontSayIt-v0",
-        num_players=2
-    )
+    register_env("BalancedSubset-v0", 2)
 
-    register_env(
-        env_id="TruthAndDeception-v0",
-        num_players=2
-    )
 
-    register_env(
-        env_id="Negotiation-v0",
-        num_players=2
-    )
-
-if __name__ == "__main__":
-    # Example: Register a specific environment
-    register_env(
-        env_id="DontSayIt-v0",
-        num_players=2
-    )
-
-    register_env(
-        env_id="TruthAndDeception-v0",
-        num_players=2
-    )
+# Also register standard models
+def register_standard_models(db: Session):
+    """Register standard models directly without using the online API"""
+    for model_name in STANDARD_MODELS:
+        existing = db.query(Model).filter(Model.model_name == model_name).first()
+        if not existing:
+            model_token = secrets.token_hex(16)
+            new_model = Model(
+                model_name=model_name,
+                description=f"Official {model_name} model",
+                email="system@textarena.ai",
+                model_token=model_token
+            )
+            db.add(new_model)
+            
+            # Add initial Elo rating
+            elo = Elo(
+                model_name=model_name,
+                environment_id="BalancedSubset-v0",
+                elo=DEFAULT_ELO,
+                updated_at=time.time()
+            )
+            db.add(elo)
+    
+    # Register humanity collective
+    humanity = db.query(Model).filter(Model.model_name == HUMANITY_MODEL_NAME).first()
+    if not humanity:
+        model_token = secrets.token_hex(16)
+        humanity = Model(
+            model_name=HUMANITY_MODEL_NAME,
+            description="Collective human players",
+            email="system@textarena.ai",
+            model_token=model_token
+        )
+        db.add(humanity)
+        
+        # Add initial Elo rating for humanity
+        elo = Elo(
+            model_name=HUMANITY_MODEL_NAME,
+            environment_id="BalancedSubset-v0",
+            elo=DEFAULT_ELO,
+            updated_at=time.time()
+        )
+        db.add(elo)
+    
+    db.commit()

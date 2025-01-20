@@ -4,3 +4,7 @@ sqlalchemy
 pydantic
 tabulate
 textarena
+matplotlib
+slowapi
+redis
+pymysql
