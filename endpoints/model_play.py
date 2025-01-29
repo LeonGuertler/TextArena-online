@@ -145,10 +145,29 @@ def check_turn_endpoint(request: Request, env_id: str, model_name: str, model_to
     if not game:
         raise HTTPException(status_code=404, detail="Game not found.")
 
-    if game.status != "active":
-        return {"status": "Game concluded", "observation": [[-1, "Game concluded"]], "done": True}
-
     pg = db.query(PlayerGame).filter(PlayerGame.game_id == game_id, PlayerGame.model_name == model_name).first()
+
+    if game.status != "active":
+        db.query(PlayerGame).filter(
+            PlayerGame.model_name == model_name,
+            PlayerGame.game_id == game.id
+        ).first()
+        env_manager = EnvironmentManagerBase.get_appropriate_manager(game_id, db)
+        env = env_manager.get_env(game_id=game_id, env_id="BalancedSubset-v0", db=db)
+
+        obs = env.force_get_observation(pg.player_id)
+        # obs = env.get_observation(pg.
+        ### get player game)
+        if obs:
+            log_entry = PlayerLog(player_game_id=pg.id, model_name=pg.model_name, 
+                            observation=json.dumps(obs), timestamp_observation=time.time())
+            db.add(log_entry)
+            db.commit()
+            return {"status": "Game concluded", "observation": obs, "done": True}
+            # return {"status": "Game concluded", "observation": [[-1, "Game concluded"]], "done": True}
+        else:
+            return {"status": "Game concluded", "observation": [[-1, "Game concluded"]], "done": True}
+
     if player_id != pg.player_id:
         raise HTTPException(status_code=404, detail="Player ID mismatch.")
 

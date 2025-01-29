@@ -36,7 +36,8 @@ from env_handlers import (
 
 logger = logging.getLogger(__name__)
 
-def get_recency_count(db: Session, model1: str, model2: str, window: int = 7 * 86400) -> int:
+# def get_recency_count(db: Session, model1: str, model2: str, window: int = 7 * 86400) -> int:
+def get_recency_count(db: Session, model1: str, model2: str, window: int = 3*3600) -> int:
     """Count recent matches between two models."""
     current_time = time.time()
     count = db.query(Game).join(PlayerGame, Game.id == PlayerGame.game_id).filter(
@@ -84,7 +85,7 @@ def compute_match_score(db: Session, combo: List[Dict]) -> float:
     recent_match_count = get_recency_count(db, model_a["model_name"], model_b["model_name"])
 
 
-    elo_component = 1 - (elo_delta/MAX_ELO_DELTA)     # [0, 1]
+    elo_component = (1 - (elo_delta/MAX_ELO_DELTA))**2     # [0, 1]
     time_component = PCT_TIME_BASE + (max([model_a["pct_queue"], model_b["pct_queue"]])*(1-PCT_TIME_BASE)) # [0.5, 1]
     recent_matches_component = 1 - (min([recent_match_count, NUM_RECENT_GAMES_CAP]) / (NUM_RECENT_GAMES_CAP*2)) # [0.5, 1]
     return elo_component * time_component * recent_matches_component
@@ -92,7 +93,7 @@ def compute_match_score(db: Session, combo: List[Dict]) -> float:
 
 def matchmaking_algorithm(db: Session, environment: Environment):
     """Core matchmaking algorithm with support for humans and standard models."""
-    logger.info(f"Starting matchmaking for environment '{environment.environment_id}'.")
+    # logger.info(f"Starting matchmaking for environment '{environment.environment_id}'.")
     current_time = time.time()
 
     # Get queued players
@@ -185,7 +186,7 @@ def matchmaking_algorithm(db: Session, environment: Environment):
             )
             table.add_row(str(pg.player_id), pg.model_name, player_type)
             
-        logger.info(f"Created game {game_id}:\n{table}")
+        # logger.info(f"Created game {game_id}:\n{table}")
 
 
 

@@ -1,53 +1,9 @@
-# import base64, uuid, os
-# from fastapi import APIRouter, HTTPException
-# from pydantic import BaseModel
-
-# class UploadPayload(BaseModel):
-#     image: str  # dataURL string
-
-# router = APIRouter()
-
-# @router.post("/upload")
-# def upload_image(payload: UploadPayload):
-#     print("trying to upload")
-#     data_url = payload.image  # e.g. "data:image/jpeg;base64,abc..."
-    
-#     if not data_url.startswith("data:image/"):
-#         raise HTTPException(status_code=400, detail="Invalid image data.")
-    
-#     # Parse out the header vs the actual base64
-#     header, encoded = data_url.split(",", 1)
-#     # Example: header = "data:image/jpeg;base64"
-    
-#     # Determine file extension
-#     file_ext = "png"  # default
-#     if "image/jpeg" in header:
-#         file_ext = "jpg"
-#     elif "image/png" in header:
-#         file_ext = "png"
-
-#     # Decode the actual bytes
-#     image_data = base64.b64decode(encoded)
-
-#     # Create a unique filename
-#     filename = f"{uuid.uuid4()}.{file_ext}"
-#     output_path = os.path.join("/uploads", filename)
-
-#     # Write to disk
-#     with open(output_path, "wb") as f:
-#         f.write(image_data)
-
-#     # Return a route that the frontend can use (like "/uploads/filename.jpg")
-#     return {"url": f"/uploads/{filename}"}
-
-# website.py
 import os
 import uuid
 import base64
 
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -57,13 +13,19 @@ UPLOAD_DIR = "./uploads"
 # Ensure the directory exists
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+
 class ImageUploadRequest(BaseModel):
     image: str  # expects a data URL or Base64-encoded string of the PNG
 
+
 @router.post("/upload")
 async def upload_image(request: ImageUploadRequest):
-    # The request.image is assumed to be a data URL or just the Base64 image string
+    """
+    Accepts a Base64-encoded image (or a data URL) and saves it to disk with a unique filename.
+    Returns the relative URL of the uploaded image.
+    """
     image_data = request.image
+
     # If the string contains the data prefix, remove it.
     if image_data.startswith("data:image"):
         try:
@@ -88,7 +50,64 @@ async def upload_image(request: ImageUploadRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail="Failed to save image.")
 
-    # In this example, we expose the uploads as static files.
-    # In production, you'd likely have a different URL or use a cloud storage service.
+    # Expose the uploads as static files.
     image_url = f"/uploads/{filename}"
+    image_url = f"/shared_img/{filename}".replace(".png", "")
     return JSONResponse(content={"url": image_url})
+
+
+@router.get("/shared_img/{img}", response_class=HTMLResponse)
+async def shared_img(img: str, request: Request):
+    """
+    Returns an HTML page with Twitter Card meta tags dynamically generated for the image.
+    The {img} parameter should match the uploaded image's filename (without any directory traversal).
+    """
+    # Sanitize img to prevent directory traversal (allow only alphanumeric + hex, dash and dot)
+    allowed_chars = "0123456789abcdefABCDEF-."
+    if not all(c in allowed_chars for c in img):
+        raise HTTPException(status_code=400, detail="Invalid image identifier.")
+
+    # Construct the full image URL
+    # Adjust the domain as necessary (for production, ensure you have HTTPS and proper domain).
+    base_url = str(request.base_url).rstrip("/")
+    image_url = f"{base_url}/uploads/{img}.png"
+
+    # Define Twitter Card meta tag content. You could also pull these from a database.
+    page_title = "I just got a great result in TextArena!"
+    page_desc = "Check out my game result and see my screenshot!"
+    page_url = f"{base_url}/shared_img/{img}"
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!-- Twitter Card meta tags -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@your_site_username">
+  <meta name="twitter:title" content="{page_title}">
+  <meta name="twitter:description" content="{page_desc}">
+  <meta name="twitter:image" content="{image_url}">
+  <meta name="twitter:url" content="{page_url}">
+  <meta name="twitter:domain" content="{request.url.hostname}">
+  <title>{page_title}</title>
+  <style>
+    body {{
+      font-family: sans-serif;
+      text-align: center;
+      margin: 2em;
+      background: #f9f9f9;
+    }}
+    img {{
+      max-width: 100%;
+      height: auto;
+    }}
+  </style>
+</head>
+<body>
+  <h1>{page_title}</h1>
+  <p>{page_desc}</p>
+  <img src="{image_url}" alt="Game result screenshot">
+</body>
+</html>"""
+
+    return HTMLResponse(content=html_content)

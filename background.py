@@ -49,16 +49,8 @@ def matchmaking_loop():
                 matchmaking_algorithm(db=db_session, environment=env)
 
             # log current status
-            log_matchmaking_status(db_session)
+            # log_matchmaking_status(db_session)
 
-
-
-            # Do your matchmaking logic here.
-            # For example:
-            # 1. check for timed-out games
-            # 2. match players in queue
-            # 3. create games, handle Elo updates
-            # ...
             db_session.close()
 
             # Sleep for your chosen interval

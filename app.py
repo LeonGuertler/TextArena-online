@@ -17,29 +17,11 @@ from sqlalchemy import desc, func, case, label, and_
 
 # # core imports
 from core.models import (Base)
-# from core.models import (
-#     Model, Base, Environment, Matchmaking, PlayerGame, 
-#     Game, Elo, PlayerLog, HumanPlayer
-# )
-# from core.schemas import (
-#     ModelRegistrationRequest, MatchmakingRegistrationRequest,
-#     LeaveMatchmakingRequest, StepRequest, GetResultsRequest,
-#     HumanMoveRequest
-# )
 
 # utility imports
 from typing import Tuple
 import secrets, time, json
 from collections import defaultdict
-# from urllib.parse import unquote
-
-# config imports
-# from config import (
-#     DATABASE_URL, DEFAULT_ELO, MATCHMAKING_INACTIVITY_TIMEOUT, 
-#     STEP_TIMEOUT, RATE_LIMIT, STANDARD_MODELS, HUMANITY_MODEL_NAME,
-#     ENV_NAME_TO_ID, REVERSE_GAME_ID_MAP
-# )
-
 
 # import env handlers
 from env_handlers import (
@@ -47,12 +29,6 @@ from env_handlers import (
     OnlineEnvHandler,
     LocalEnvHandler
 )
-
-# import utils
-# from app_utils import (
-#     categorize_reason
-# )
-
 
 # import endpoints
 from endpoints import model_play, human_play, analytics, website

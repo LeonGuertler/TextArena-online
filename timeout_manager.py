@@ -37,7 +37,7 @@ def handle_action_timeout(db: Session, game_id: int, model_name: str):
     game.reason = f"Player '{model_name}' timed out."
 
     db.commit()
-    logger.info(f"Player '{player.model_name}' in game '{game.id}' timed out. Game concluded.")
+    # logger.info(f"Player '{player.model_name}' in game '{game.id}' timed out. Game concluded.")
 
     # Update Elo ratings
     update_elos(db, game.id, game.environment_id)
@@ -81,7 +81,7 @@ def check_and_enforce_timeouts(db: Session):
     # check queue timeouts
     for queue_item in db.query(Matchmaking).filter():
         # remove those where last_checked has timed out
-        print(time.time() - queue_item.last_checked)
+        # print(time.time() - queue_item.last_checked)
         if (time.time() - queue_item.last_checked) > MATCHMAKING_INACTIVITY_TIMEOUT:
             handle_matchmaking_timeout(
                 db=db,

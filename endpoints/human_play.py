@@ -40,10 +40,10 @@ def register_human_player(request: Request, db: Session = Depends(get_db)):
     """
     Register a human player using their IP address as identifier.
     """
-    print("=== Human Register Endpoint ===")
-    print(f"Headers: {dict(request.headers)}")
-    print(f"IP: {request.client.host}")
-    print(f"Method: {request.method}")
+    # print("=== Human Register Endpoint ===")
+    # print(f"Headers: {dict(request.headers)}")
+    # print(f"IP: {request.client.host}")
+    # print(f"Method: {request.method}")
     
     try:
         ip_address = request.client.host
@@ -52,7 +52,7 @@ def register_human_player(request: Request, db: Session = Depends(get_db)):
         # Check if IP already exists
         human = db.query(HumanPlayer).filter(HumanPlayer.ip_address == ip_address).first()
         if human:
-            print(f"Found existing human with ID: {human.id}")
+            # print(f"Found existing human with ID: {human.id}")
             human.last_active = current_time
             db.commit()
             return JSONResponse(
@@ -68,14 +68,14 @@ def register_human_player(request: Request, db: Session = Depends(get_db)):
         )
         db.add(human)
         db.commit()
-        print(f"Created new human with ID: {human.id}")
+        # print(f"Created new human with ID: {human.id}")
         
         return JSONResponse(
             content={"human_id": human.id},
             headers={"Access-Control-Allow-Origin": "http://localhost:3000"}
         )
     except Exception as e:
-        print(f"Error in register endpoint: {str(e)}")
+        # print(f"Error in register endpoint: {str(e)}")
         return JSONResponse(
             status_code=500,
             content={"error": str(e)},
@@ -85,9 +85,9 @@ def register_human_player(request: Request, db: Session = Depends(get_db)):
 
 @router.post("/human/join_matchmaking")
 def human_join_matchmaking(request: Request, db: Session = Depends(get_db)):
-    print("\n=== Human Join Matchmaking Endpoint ===")
-    print(f"Request received at: {time.strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"IP: {request.client.host}")
+    # print("\n=== Human Join Matchmaking Endpoint ===")
+    # print(f"Request received at: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    # print(f"IP: {request.client.host}")
     
     try:
         ip_address = request.client.host
@@ -121,7 +121,7 @@ def human_join_matchmaking(request: Request, db: Session = Depends(get_db)):
         )
         
     except Exception as e:
-        print(f"Error in join matchmaking: {str(e)}")
+        # print(f"Error in join matchmaking: {str(e)}")
         return JSONResponse(
             status_code=500,
             content={"error": str(e)},
@@ -160,12 +160,12 @@ def human_check_matchmaking_status(request: Request, db: Session = Depends(get_d
             PlayerGame.game_id == game.id,
             PlayerGame.human_ip.is_(None)
         ).all()
-        print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++==")
-        print(game.id, pg.player_id, ", ".join([o.model_name for o in opponents]) ) 
-        print(opponents)
-        for opponent in opponents:
-            print(opponent, opponent.model_name)
-        print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++==")
+        # print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++==")
+        # print(game.id, pg.player_id, ", ".join([o.model_name for o in opponents]) ) 
+        # print(opponents)
+        # for opponent in opponents:
+        #     print(opponent, opponent.model_name)
+        # print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++==")
         return {
             "status": "Match found",
             "game_id": game.id,
@@ -188,7 +188,7 @@ def human_check_turn(
     Check the current turn/observation for a human player identified by IP address.
     """
     ip_address = request.client.host
-    print(f"[human_check_turn] IP={ip_address}, game_id={game_id}")
+    # print(f"[human_check_turn] IP={ip_address}, game_id={game_id}")
 
     # 1. Find the player game record by ip + game_id
     pg = db.query(PlayerGame).filter(
@@ -202,26 +202,44 @@ def human_check_turn(
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
 
-    if game.status != "active":
-        return {
-            "status": "Game concluded",
-            "observation": "Game has ended",
-            "done": True
-        }
-
     # 2. Get environment
     env_manager = EnvironmentManagerBase.get_appropriate_manager(game_id, db)
     env = env_manager.get_env(game_id=game_id, env_id="BalancedSubset-v0", db=db)
-    
-    print(f"Is player turn: {env.check_player_turn(player_id=pg.player_id)}")
 
-    # 3. Check if env concluded
-    if env.check_done():
+    if game.status != "active" or env.check_done():
+        # check observations if available
+        obs = env.force_get_observation(pg.player_id)
+        # print(f"\n\nDone. Env: {env}, obs: {obs}")
+
+        if obs and len(obs) != 0:
+            # Log the observation
+            log_entry = PlayerLog(
+                player_game_id=pg.id,
+                model_name=HUMANITY_MODEL_NAME,  # or any label you use for humans
+                observation=json.dumps(obs),
+                timestamp_observation=time.time()
+            )
+            db.add(log_entry)
+            db.commit()
+        else:
+            obs = "Game has ended"
+        
         return {
             "status": "Game concluded",
-            "observation": "Game has ended",
+            "observation": obs,
             "done": True
         }
+
+    
+    # print(f"Is player turn: {env.check_player_turn(player_id=pg.player_id)}")
+
+    # # 3. Check if env concluded
+    # if env.check_done():
+    #     return {
+    #         "status": "Game concluded",
+    #         "observation": "Game has ended",
+    #         "done": True
+    #     }
     # 4. Check if it's this player's turn
     if env.check_player_turn(player_id=pg.player_id):
         obs = env.get_observation(pg.player_id)
@@ -262,13 +280,13 @@ def human_make_move(
         PlayerGame.human_ip == ip_address,
         Game.status == "active"
     ).first()
-    print(pg)
+    # print(pg)
     if not pg:
         raise HTTPException(status_code=404, detail="Game not found or not active")
 
     # 2) Check turn
     env_manager = EnvironmentManagerBase.get_appropriate_manager(game_id, db)
-    print(env_manager)
+    # print(env_manager)
     env = env_manager.get_env(game_id=game_id, env_id="BalancedSubset-v0", db=db)
     if not env.check_player_turn(player_id=pg.player_id):
         raise HTTPException(status_code=400, detail="Not your turn")
@@ -283,7 +301,7 @@ def human_make_move(
         PlayerLog.player_game_id==pg.id,
         PlayerLog.model_name==pg.model_name
     ).order_by(desc(PlayerLog.timestamp_observation)).first()
-    print(pg.id, pg.model_name, log_entry)
+    # print(pg.id, pg.model_name, log_entry)
 
     if log_entry:
         log_entry.action = payload.move
@@ -307,6 +325,7 @@ def human_make_move(
                 player.outcome = "Draw"
 
         db.commit()
+        obs = env.force_get_observation(player.player_id)
         env_manager.remove_env(game_id)
 
         # Elo updates
@@ -315,6 +334,7 @@ def human_make_move(
         return {
             "status": "Game completed",
             "reward": rewards[pg.player_id],
+            "observation": obs,
             "reason": info.get("reason", "No reason provided")
         }
 
@@ -345,7 +365,7 @@ def human_get_match_outcome(
 
     reason = game.reason
 
-    print(f"\n\n\nOutcome: {outcome}\t Reason: {reason}\n\n\n")
+    # print(f"\n\n\nOutcome: {outcome}\t Reason: {reason}\n\n\n")
 
     return {
         "outcome": outcome,

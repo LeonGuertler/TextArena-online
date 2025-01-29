@@ -31,8 +31,9 @@ class EnvironmentManagerBase:
         
     @classmethod
     def remove_env(cls, game_id: int):
-        if game_id in cls._environments:
-            del cls._environments[game_id]
+        # if game_id in cls._environments:
+        #     del cls._environments[game_id]
+        pass
 
     @staticmethod
     def determine_env_type(game_id: int, db: Session) -> str:
@@ -57,7 +58,7 @@ class OnlineEnvHandler:
         self.info = {}
         self.reward = {}
         self.env_id = self.env.env_id  # Store the specific env ID
-        print("OnlineEnvHandler initialized:", self.env, self.env.env_id)
+        # print("OnlineEnvHandler initialized:", self.env, self.env.env_id)
 
     def get_initial_observation(self, player_id):
         return self.initial_observations[player_id]
@@ -66,7 +67,7 @@ class OnlineEnvHandler:
         return self.done
 
     def check_player_turn(self, player_id: int) -> bool:
-        print("OnlineEnvHandler check:", self.env, self.env.env_id)
+        # print("OnlineEnvHandler check:", self.env, self.env.env_id)
         return player_id == self.env.state.current_player_id
 
     def get_observation(self, player_id: int):
@@ -74,8 +75,11 @@ class OnlineEnvHandler:
         assert pid == player_id, "Unexpected Error. Players ids don't match in get_observation"
         return obs
 
+    def force_get_observation(self, player_id: int):
+        return self.env.state.observations[player_id]
+
     def execute_step(self, action: str):
-        print(f'\n\nExecuting action: {action}\n\n')
+        # print(f'\n\nExecuting action: {action}\n\n')
         if self.done:
             return
         self.done, self.info = self.env.step(action=action)
@@ -102,7 +106,7 @@ class LocalEnvHandler:
         self.reward = {}
         self.env_id = self.env.env_id  # Store the specific env ID
         self.local_model_name = local_model
-        print("\nInitializing LocalEnvHandler for model:", self.local_model_name)
+        # print("\nInitializing LocalEnvHandler for model:", self.local_model_name)
         self.local_model = ta.agents.OpenRouterAgent(model_name=local_model)
         self.local_pid = local_pid 
         self.local_obs = []
@@ -111,7 +115,7 @@ class LocalEnvHandler:
         # If local model should move immediately:
         while self.env.state.current_player_id == self.local_pid and not self.done:
             self._execute_local_model_step()
-            print(f"LocalEnvHandler stuck: current_player_id={self.env.state.current_player_id}, local_pid={self.local_pid}")
+            # print(f"LocalEnvHandler stuck: current_player_id={self.env.state.current_player_id}, local_pid={self.local_pid}")
             time.sleep(1)
 
     def get_initial_observation(self, player_id):
@@ -128,8 +132,12 @@ class LocalEnvHandler:
         assert pid == player_id, "Unexpected Error. Players ids don't match in get_observation"
         return obs
 
+    def force_get_observation(self, player_id: int):
+        return self.env.state.observations[player_id]
+
+
     def execute_step(self, action: str):
-        print("LocalEnvHandler: Executing global model step.")
+        # print("LocalEnvHandler: Executing global model step.")
 
         # Update local model last action time
         db = next(get_db())
@@ -157,7 +165,7 @@ class LocalEnvHandler:
         return self.rewards, self.info
 
     def _execute_local_model_step(self):
-        print("LocalEnvHandler: Executing local step")
+        # print("LocalEnvHandler: Executing local step")
         if self.done:
             return
         obs_timestamp = time.time()
@@ -192,8 +200,8 @@ class LocalEnvHandler:
             db.close()
 
         self.done, self.info = self.env.step(action=action)
-        print("LocalEnvHandler: Local step executed")
-        print(f"Current player: {self.env.state.current_player_id}, Local Model ID: {self.local_pid}")
+        # print("LocalEnvHandler: Local step executed")
+        # print(f"Current player: {self.env.state.current_player_id}, Local Model ID: {self.local_pid}")
 
     def _transform_local_obs(self, obs: Optional[List[Tuple[int, str]]]):
         if obs is not None:

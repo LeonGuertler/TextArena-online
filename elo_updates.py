@@ -33,7 +33,7 @@ def get_dynamic_k(db: Session, model_name: str) -> float:
 
 def update_elos(db: Session, game_id: int, env_id: str):
     players = db.query(PlayerGame).filter(PlayerGame.game_id == game_id).all()
-    logger.debug(f"Calculating Elo updates for game '{game_id}' in environment '{env_id}'.")
+    # logger.debug(f"Calculating Elo updates for game '{game_id}' in environment '{env_id}'.")
     current_time = time.time()
 
     min_reward = min([p.reward for p in players])
@@ -59,8 +59,8 @@ def update_elos(db: Session, game_id: int, env_id: str):
             'k_factor': k_factor
         })
 
-    print(f"\n\n Min: {min_reward}, Max: {max_reward}")
-    print(player_details)
+    # print(f"\n\n Min: {min_reward}, Max: {max_reward}")
+    # print(player_details)
 
     # Calculate average opponent Elo for each player
     for player in player_details:
@@ -71,14 +71,14 @@ def update_elos(db: Session, game_id: int, env_id: str):
             avg_opp_elo = DEFAULT_ELO  # Default if no opponents
 
         expected_score = 1 / (1 + 10 ** ((avg_opp_elo - player['prev_elo']) / 400))
-        print(f"Model Name: {player['model_name']}, Outcome: {player['outcome']}, Prev Elo: {player['prev_elo']}, K-factor: {player['k_factor']}, avg Opp elo: {avg_opp_elo}, opponents: {opponents}")
-        print(f"expected score: {expected_score}")
+        # print(f"Model Name: {player['model_name']}, Outcome: {player['outcome']}, Prev Elo: {player['prev_elo']}, K-factor: {player['k_factor']}, avg Opp elo: {avg_opp_elo}, opponents: {opponents}")
+        # print(f"expected score: {expected_score}")
         new_elo = player['prev_elo'] + player['k_factor'] * (player['outcome'] - expected_score)
         player['new_elo'] = round(new_elo, 2)
-        logger.info(f"Elo Update - {player['model_name']}: {player['prev_elo']} -> {player['new_elo']}")
+        # logger.info(f"Elo Update - {player['model_name']}: {player['prev_elo']} -> {player['new_elo']}")
 
 
-    print(player_details)
+    # print(player_details)
     # Persist Elo updates
     for player in player_details:
         new_elo_entry = Elo(
@@ -90,4 +90,4 @@ def update_elos(db: Session, game_id: int, env_id: str):
         db.add(new_elo_entry)
 
     db.commit()
-    logger.debug(f"Elo ratings updated for game '{game_id}' in environment '{env_id}'.")
+    # logger.debug(f"Elo ratings updated for game '{game_id}' in environment '{env_id}'.")
