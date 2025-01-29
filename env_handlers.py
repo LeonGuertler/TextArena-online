@@ -57,7 +57,7 @@ class OnlineEnvHandler:
         self.done = False
         self.info = {}
         self.reward = {}
-        self.env_id = self.env.env_id  # Store the specific env ID
+        self.env_id = self.env.env.env_id  # Store the specific env ID
         # print("OnlineEnvHandler initialized:", self.env, self.env.env_id)
 
     def get_initial_observation(self, player_id):
@@ -104,7 +104,7 @@ class LocalEnvHandler:
         self.done = False
         self.info = {}
         self.reward = {}
-        self.env_id = self.env.env_id  # Store the specific env ID
+        self.env_id = self.env.env.env_id  # Store the specific env ID
         self.local_model_name = local_model
         # print("\nInitializing LocalEnvHandler for model:", self.local_model_name)
         self.local_model = ta.agents.OpenRouterAgent(model_name=local_model)
