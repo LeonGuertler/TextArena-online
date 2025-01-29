@@ -8,3 +8,7 @@ matplotlib
 slowapi
 redis
 pymysql
+pyngrok
+playwright
+filelock
+pydantic[email]
